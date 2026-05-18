@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aliens — 3D Space Journey</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Exo+2:ital,wght@0,300;0,400;0,600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#000;overflow:hidden;font-family:'Exo 2',sans-serif;color:#e2e8f0}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+
+/* Journey progress bar */
+#jbar{position:fixed;top:0;left:0;height:2px;width:0%;z-index:300;background:linear-gradient(90deg,#06b6d4,#8b5cf6,#ec4899);transition:width .4s ease;pointer-events:none}
+
+/* Nav */
+nav{position:fixed;top:0;left:0;right:0;z-index:200;padding:.7rem 1.5rem;display:flex;align-items:center;background:rgba(2,2,15,.7);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.04)}
+.logo{font-family:'Orbitron',monospace;font-size:.9rem;font-weight:700;color:#06b6d4;letter-spacing:.1em}
+.logo em{color:#c4b5fd;font-style:normal}
+#nav-st{margin-left:auto;font-family:'Orbitron',monospace;font-size:.58rem;letter-spacing:.22em;text-transform:uppercase;color:rgba(6,182,212,.5)}
+
+/* Content panel */
+#overlay{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;z-index:10;padding:1rem}
+#panel{
+  max-width:680px;width:100%;
+  background:rgba(2,2,22,.86);
+  border:1px solid rgba(6,182,212,.22);
+  border-radius:12px;padding:2.2rem 2.8rem;
+  backdrop-filter:blur(14px);
+  box-shadow:0 0 50px rgba(6,182,212,.06),0 0 80px rgba(139,92,246,.04),inset 0 1px 0 rgba(255,255,255,.05);
+  opacity:0;transform:translateY(24px) scale(.98);
+  transition:opacity .7s ease,transform .7s ease;
+  pointer-events:auto;
+}
+#panel.show{opacity:1;transform:translateY(0) scale(1)}
+#plabel{font-family:'Orbitron',monospace;font-size:.62rem;letter-spacing:.35em;text-transform:uppercase;color:rgba(6,182,212,.65);margin-bottom:.7rem}
+#ptitle{font-family:'Orbitron',monospace;font-size:clamp(1.1rem,2.8vw,1.85rem);font-weight:700;color:#fff;margin-bottom:1.4rem;line-height:1.25;text-shadow:0 0 22px rgba(6,182,212,.35);min-height:1.3em}
+#ptext{color:rgba(195,210,230,.85);font-weight:300;font-size:.92rem;line-height:1.85}
+#ptext p{margin-bottom:.95rem;opacity:0;transform:translateY(10px);transition:opacity .55s ease,transform .55s ease}
+#ptext p.show{opacity:1;transform:translateY(0)}
+#ptext p:last-child{margin-bottom:0}
+#pcont{margin-top:1.3rem;font-family:'Orbitron',monospace;font-size:.58rem;letter-spacing:.3em;text-transform:uppercase;color:rgba(6,182,212,.45);opacity:0;transition:opacity .4s ease;animation:none}
+#pcont.show{opacity:1;animation:blink 1.8s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:.25}50%{opacity:.7}}
+
+/* Waypoint dots */
+#dots{position:fixed;bottom:1.4rem;left:50%;transform:translateX(-50%);display:flex;gap:.45rem;align-items:center;z-index:10}
+.wd{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.28);transition:background .35s,transform .35s,box-shadow .35s;cursor:pointer}
+.wd.active{background:#06b6d4;transform:scale(1.5);box-shadow:0 0 8px rgba(6,182,212,.7)}
+.wd.done{background:rgba(6,182,212,.45)}
+
+/* Cockpit HUD */
+#hud{position:fixed;bottom:3.2rem;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:.3rem;pointer-events:none;z-index:10}
+.hl{width:220px;height:1px;background:linear-gradient(90deg,transparent,rgba(6,182,212,.2),transparent)}
+#hud-data{font-family:'Orbitron',monospace;font-size:.55rem;letter-spacing:.18em;color:rgba(6,182,212,.3);white-space:nowrap}
+#shud{position:fixed;top:3.8rem;left:1.4rem;font-family:'Orbitron',monospace;font-size:.6rem;letter-spacing:.18em;color:rgba(6,182,212,.4);z-index:10}
+
+/* Controls */
+#ctrl{position:fixed;bottom:1.4rem;right:1.4rem;display:flex;gap:.5rem;align-items:center;z-index:10}
+.btn{background:rgba(2,2,20,.75);border:1px solid rgba(6,182,212,.28);border-radius:8px;padding:.42rem .8rem;color:rgba(6,182,212,.8);font-family:'Orbitron',monospace;font-size:.6rem;letter-spacing:.08em;cursor:pointer;transition:background .2s,border-color .2s,color .2s;user-select:none}
+.btn:hover{background:rgba(6,182,212,.12);border-color:rgba(6,182,212,.6);color:#00d4ff}
+#spd{-webkit-appearance:none;width:68px;height:3px;background:rgba(6,182,212,.3);border-radius:2px;outline:none;cursor:pointer}
+#spd::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:#06b6d4;cursor:pointer}
+.spd-lbl{font-family:'Orbitron',monospace;font-size:.55rem;letter-spacing:.12em;color:rgba(6,182,212,.4)}
+
+/* Intro screen */
+#intro{position:fixed;inset:0;z-index:500;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,#06091a 0%,#000 70%);transition:opacity 1s ease}
+#intro.hidden{opacity:0;pointer-events:none}
+.i-tag{font-family:'Orbitron',monospace;font-size:.68rem;letter-spacing:.4em;text-transform:uppercase;color:#06b6d4;margin-bottom:1.5rem;animation:fadeup .8s ease forwards .4s;opacity:0}
+.i-title{font-family:'Orbitron',monospace;font-size:clamp(2.5rem,8vw,5.5rem);font-weight:900;line-height:1.05;letter-spacing:-.02em;margin-bottom:1.4rem;background:linear-gradient(140deg,#fff,#67e8f9 40%,#c4b5fd);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 30px rgba(6,182,212,.25));animation:fadeup .8s ease forwards .7s;opacity:0}
+.i-sub{font-size:clamp(.95rem,2.2vw,1.2rem);font-weight:300;font-style:italic;color:rgba(148,163,184,.8);max-width:500px;text-align:center;margin-bottom:2.8rem;animation:fadeup .8s ease forwards 1s;opacity:0}
+.i-btn{font-family:'Orbitron',monospace;font-size:.75rem;letter-spacing:.3em;text-transform:uppercase;color:#06b6d4;border:1px solid rgba(6,182,212,.5);border-radius:40px;padding:.85rem 2.5rem;cursor:pointer;background:rgba(6,182,212,.06);transition:background .25s,border-color .25s,transform .2s,box-shadow .25s;animation:fadeup .8s ease forwards 1.3s;opacity:0}
+.i-btn:hover{background:rgba(6,182,212,.14);border-color:#06b6d4;transform:scale(1.03);box-shadow:0 0 20px rgba(6,182,212,.2)}
+@keyframes fadeup{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+/* Done screen */
+#done{position:fixed;inset:0;z-index:400;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(0,0,0,.85);backdrop-filter:blur(6px);opacity:0;pointer-events:none;transition:opacity 1s ease}
+#done.show{opacity:1;pointer-events:auto}
+.d-star{font-size:2rem;margin-bottom:1rem;animation:spin 8s linear infinite}
+.d-title{font-family:'Orbitron',monospace;font-size:clamp(1.4rem,4vw,2.4rem);font-weight:900;color:#fff;margin-bottom:.8rem;text-align:center}
+.d-sub{color:rgba(148,163,184,.75);font-size:.95rem;font-weight:300;text-align:center;max-width:440px;margin-bottom:2rem}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.d-btn{font-family:'Orbitron',monospace;font-size:.7rem;letter-spacing:.25em;color:#06b6d4;border:1px solid rgba(6,182,212,.45);border-radius:40px;padding:.75rem 2rem;cursor:pointer;background:rgba(6,182,212,.06);transition:background .25s;margin:0 .4rem}
+.d-btn:hover{background:rgba(6,182,212,.14)}
+
+/* Mobile */
+@media(max-width:620px){
+  #panel{padding:1.5rem 1.4rem;border-radius:8px}
+  #ptitle{font-size:1.1rem}
+  #ptext{font-size:.85rem}
+  #ctrl{bottom:.7rem;right:.7rem;gap:.4rem}
+  .hl{width:140px}
+}
+</style>
+</head>
+<body>
+
+<canvas id="c"></canvas>
+<div id="jbar"></div>
+
+<!-- Intro -->
+<div id="intro">
+  <div class="i-tag">— Deep Space Exploration —</div>
+  <h1 class="i-title">Are We<br>Alone?</h1>
+  <p class="i-sub">An immersive 3D journey through the cosmos in search of life beyond our world</p>
+  <button class="i-btn" id="launch-btn">LAUNCH JOURNEY ▶</button>
+</div>
+
+<!-- Done -->
+<div id="done">
+  <div class="d-star">✦</div>
+  <h2 class="d-title">Journey Complete</h2>
+  <p class="d-sub">The cosmos is vast and the question endures. The search for life beyond Earth continues.</p>
+  <div style="display:flex;gap:.8rem">
+    <button class="d-btn" id="replay-btn">↺ REPLAY</button>
+  </div>
+</div>
+
+<nav><span class="logo">ALIEN<em>S</em></span><span id="nav-st">PREPARING LAUNCH...</span></nav>
+
+<div id="overlay">
+  <div id="panel">
+    <div id="plabel"></div>
+    <div id="ptitle"></div>
+    <div id="ptext"></div>
+    <div id="pcont">▶ CONTINUING JOURNEY...</div>
+  </div>
+</div>
+
+<div id="dots"></div>
+<div id="shud"></div>
+<div id="hud"><div class="hl"></div><div id="hud-data">VEL: 0.00 | BRG: 000° | SECTION: —</div><div class="hl"></div></div>
+<div id="ctrl">
+  <span class="spd-lbl">SPD</span><input type="range" id="spd" min="1" max="5" value="2" step="1">
+  <button class="btn" id="btn-pause">⏸ PAUSE</button>
+  <button class="btn" id="btn-skip">SKIP ▶</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
+<script>
+// ══════════════════════════════════════════════════
+// CONTENT DATA
+// ══════════════════════════════════════════════════
+const SECTIONS = [
+  {
+    label:'00 / Welcome',title:'Are We Alone in the Universe?',
+    paras:[
+      'A first-person journey through the cosmos — exploring one of humanity\'s most profound questions.',
+      'The universe is vast, ancient, and full of mystery. Prepare to travel through space and discover what science tells us about the possibility of life beyond Earth.'
+    ]
+  },
+  {
+    label:'01 / Definition',title:'What Do We Mean by "Aliens"?',
+    paras:[
+      'When most people think of aliens, they imagine little green men in flying saucers. But scientists use the word "alien" to mean any life form that did not originate on Earth. That could mean bacteria living deep in the rocks of Mars, or it could mean an advanced civilisation capable of building spacecraft and communicating across the stars. The word "extraterrestrial" — meaning "outside of Earth" — is often used in science. Both words refer to the same idea: life beyond our planet.',
+      'Scientists generally divide the search into two types. The first is the search for simple life, such as microbes — tiny single-celled organisms similar to bacteria on Earth. The second is the search for intelligent life, meaning beings that can think, communicate, and use technology. So far, we have not found clear evidence of either kind. But the search continues.'
+    ]
+  },
+  {
+    label:'02 / Scale',title:'The Size of the Universe',
+    paras:[
+      'To understand why scientists believe aliens might exist, we first need to think about the enormous size of the universe. Our planet Earth is part of the solar system, which includes the Sun and eight planets. Our solar system is part of the Milky Way galaxy, which contains over 200 billion stars. And the Milky Way is just one of an estimated two trillion galaxies in the observable universe.',
+      'That number — two trillion galaxies — is almost impossible to imagine. If each galaxy has hundreds of billions of stars, and many of those stars have planets, the total number of planets in the universe is unimaginably large. Scientists estimate there could be more planets than there are grains of sand on all of Earth\'s beaches combined.',
+      'With so many worlds out there, many scientists find it hard to believe that life exists only here, on this one small planet, in one ordinary solar system, in one of trillions of galaxies.'
+    ]
+  },
+  {
+    label:'03 / Biology',title:'The Conditions for Life',
+    paras:[
+      'On Earth, life needs a few key things to survive: liquid water, a source of energy, and the right chemical building blocks — especially carbon. Life has been found in some of the most extreme environments on our planet: boiling hot springs, frozen glaciers, and even deep in the ocean where no sunlight reaches. These tough creatures, called extremophiles, show us that life can adapt to surprisingly harsh conditions.',
+      'Scientists look for similar conditions on other planets and moons. A planet is said to be in the "habitable zone" — sometimes called the Goldilocks Zone — if it is not too hot and not too cold for liquid water to exist on its surface. Many such planets have been discovered. But even outside this zone, life might exist in unexpected places.'
+    ]
+  },
+  {
+    label:'04 / Nearby',title:'Life in Our Solar System',
+    paras:[
+      'Our own solar system may be hiding signs of life closer than we think. Mars, our neighbouring planet, once had liquid water flowing across its surface billions of years ago. Today, Mars is cold and dry, but scientists have detected signs of water ice underground. Some researchers believe that if life existed on ancient Mars, it may have survived deep below the surface, where liquid water might still exist.',
+      'Even more exciting are some of the moons in our solar system. Europa, a moon of Jupiter, has a vast ocean of liquid water beneath its icy surface. Heat from the moon\'s interior keeps this ocean from freezing. Scientists believe this hidden ocean could support microbial life. Another moon, Enceladus, orbiting Saturn, actually sprays jets of water into space — and those jets contain organic chemicals, the building blocks of life.'
+    ]
+  },
+  {
+    label:'05 / Signals',title:'Searching for Alien Signals',
+    paras:[
+      'If intelligent life exists elsewhere in the universe, it might be trying to communicate with other civilisations — just as we have done. Since 1960, scientists have been listening to the sky for radio signals that might come from an alien civilisation. This effort is known as SETI, the Search for Extraterrestrial Intelligence.',
+      'So far, no confirmed signal has been found. But in 1977, a radio telescope in Ohio detected an unusual signal that seemed very different from natural sources. A scientist reviewing the data wrote "Wow!" in the margin — and the "Wow! Signal" has never been explained or heard again.',
+      'Humans have also sent messages into space. In 1974, scientists used the Arecibo radio telescope in Puerto Rico to send a message toward a cluster of stars 25,000 light-years away. We have also launched two Voyager spacecraft, each carrying a "Golden Record" — a metal disc containing music, greetings in 55 languages, and images of life on Earth. These probes are now beyond our solar system, drifting through interstellar space.'
+    ]
+  },
+  {
+    label:'06 / Paradox',title:'The Fermi Paradox',
+    paras:[
+      'Given the enormous size of the universe and the huge number of planets that might support life, a simple question arises: if alien life is so likely, where is everyone? This is known as the Fermi Paradox, named after the physicist Enrico Fermi, who asked this question in 1950.',
+      'Many explanations have been proposed. Perhaps intelligent life is extremely rare — so rare that we are the only example in our galaxy. Perhaps civilisations like ours tend to destroy themselves before they can travel or communicate across the stars. Perhaps aliens exist, but are so far away that their signals have not yet reached us. Or perhaps they are communicating in a way we do not yet understand.',
+      'Some scientists have proposed the idea of a "Great Filter" — a barrier that most forms of life fail to cross. Perhaps this filter is already behind us, meaning life on Earth is exceptionally rare. Or perhaps the filter lies ahead, which would be a troubling thought.'
+    ]
+  },
+  {
+    label:'07 / Form',title:'What Would Aliens Look Like?',
+    paras:[
+      'If we ever discover intelligent life on another planet, what would it look like? The honest answer is: we simply do not know. Life on Earth developed over billions of years, shaped by specific conditions, random mutations, and evolutionary pressures. On a different planet, with different gravity, atmosphere, temperature, and chemistry, life could take almost any form.',
+      'It might not need a head, eyes, or limbs as we understand them. It might perceive the world through senses we cannot imagine. It might not even be based on carbon chemistry — some scientists have speculated about life based on silicon, or life that uses a different liquid instead of water.',
+      'However, some scientists believe that evolution tends to produce certain features repeatedly because they are useful — a concept called convergent evolution. Eyes, for example, have evolved independently many times on Earth. It is possible that alien life capable of building technology might share some features with us, at least in a broad sense.'
+    ]
+  },
+  {
+    label:'08 / Discovery',title:'What If We Find Aliens?',
+    paras:[
+      'The discovery of extraterrestrial life — even simple microbes — would be one of the greatest events in human history. It would mean that life is not unique to Earth, and that the universe is far richer and more complex than we ever imagined.',
+      'The discovery of intelligent life would be even more profound. It would raise deep questions about our place in the universe, our values, and our identity as a species. How should humanity respond? Should we communicate? What do we say? What if their intentions are unknown?',
+      'Some scientists, including the late Stephen Hawking, warned that contact with an advanced alien civilisation could be dangerous — similar to what happened when more technologically advanced civilisations encountered less advanced ones in human history. Others believe that any civilisation capable of reaching us would have already survived the challenges that threaten younger civilisations, suggesting they might be peaceful.',
+      'For now, these remain questions without answers. But the search goes on — in our solar system and across the stars — as humanity reaches outward, asking one of the oldest and most profound questions of all: are we alone?'
+    ]
+  }
+];
+
+// ══════════════════════════════════════════════════
+// THREE.JS SETUP
+// ══════════════════════════════════════════════════
+const isMobile = window.innerWidth < 640;
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({canvas, antialias:!isMobile, powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, isMobile ? 1.5 : 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x000008);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x000008, 0.0006);
+
+const camera = new THREE.PerspectiveCamera(72, window.innerWidth/window.innerHeight, 0.1, 2500);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth/window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ── Lighting
+scene.add(new THREE.AmbientLight(0x0a0a30, 2));
+const keyLight = new THREE.DirectionalLight(0x6688aa, 1.2);
+keyLight.position.set(1, 1, .5);
+scene.add(keyLight);
+
+// ── Stars (follow camera for infinite-space feel)
+const starGeo = new THREE.BufferGeometry();
+const STAR_COUNT = isMobile ? 4000 : 7000;
+{
+  const pos = new Float32Array(STAR_COUNT*3);
+  const col = new Float32Array(STAR_COUNT*3);
+  const starCols = [[1,1,1],[.85,.9,1],[1,.95,.8],[.8,.85,1],[1,.82,.9]];
+  for (let i=0;i<STAR_COUNT;i++) {
+    const r = 500+Math.random()*600;
+    const th = Math.random()*Math.PI*2;
+    const ph = Math.acos(2*Math.random()-1);
+    pos[i*3]   = r*Math.sin(ph)*Math.cos(th);
+    pos[i*3+1] = r*Math.sin(ph)*Math.sin(th);
+    pos[i*3+2] = r*Math.cos(ph);
+    const c = starCols[Math.floor(Math.random()*starCols.length)];
+    col[i*3]=c[0]; col[i*3+1]=c[1]; col[i*3+2]=c[2];
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  starGeo.setAttribute('color',    new THREE.BufferAttribute(col,3));
+}
+const starField = new THREE.Points(starGeo, new THREE.PointsMaterial({
+  size:isMobile?1.3:.85, vertexColors:true, transparent:true, opacity:.88, sizeAttenuation:true
+}));
+scene.add(starField);
+
+// ── Nebula clouds
+{
+  const geo = new THREE.BufferGeometry();
+  const N = 350;
+  const pos = new Float32Array(N*3);
+  const col = new Float32Array(N*3);
+  const pal = [[.28,.08,.55],[.04,.35,.58],[.45,.08,.38],[.08,.45,.45]];
+  for (let i=0;i<N;i++) {
+    pos[i*3]   = (Math.random()-.5)*280;
+    pos[i*3+1] = (Math.random()-.5)*180;
+    pos[i*3+2] = -Math.random()*1800+20;
+    const c = pal[i%pal.length];
+    col[i*3]=c[0]; col[i*3+1]=c[1]; col[i*3+2]=c[2];
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color',    new THREE.BufferAttribute(col,3));
+  scene.add(new THREE.Points(geo, new THREE.PointsMaterial({
+    size:22+Math.random()*14, vertexColors:true, transparent:true,
+    opacity:.07, blending:THREE.AdditiveBlending, depthWrite:false, sizeAttenuation:true
+  })));
+}
+
+// ── Planets
+const PDATA = [
+  {p:[-85,32,-160],  r:18, c:0x8b5cf6, e:0x2d1b69},
+  {p:[115,-22,-290], r:12, c:0x06b6d4, e:0x0c3b45},
+  {p:[-55,-42,-440], r:26, c:0xec4899, e:0x5b1a35},
+  {p:[95,42,-580],   r:9,  c:0xfbbf24, e:0x5c3d0a},
+  {p:[-115,28,-730], r:32, c:0x34d399, e:0x0d4a30},
+  {p:[75,-32,-880],  r:14, c:0x818cf8, e:0x1e2059},
+  {p:[-65,52,-1040], r:21, c:0xf472b6, e:0x5b1540},
+  {p:[105,-42,-1190],r:11, c:0x22d3ee, e:0x0b3b40},
+  {p:[-95,-18,-1360],r:23, c:0xa78bfa, e:0x2d1b69},
+  {p:[55,38,-1500],  r:17, c:0xfb923c, e:0x5c2a0a},
+];
+const planets = PDATA.map(d => {
+  const m = new THREE.Mesh(
+    new THREE.SphereGeometry(d.r,isMobile?20:32,isMobile?16:24),
+    new THREE.MeshPhongMaterial({color:d.c, emissive:d.e, shininess:55, specular:0x333333})
+  );
+  m.position.set(...d.p);
+  // Glow halo
+  m.add(new THREE.Mesh(
+    new THREE.SphereGeometry(d.r*1.7,12,12),
+    new THREE.MeshBasicMaterial({color:d.c,transparent:true,opacity:.035,side:THREE.BackSide,blending:THREE.AdditiveBlending,depthWrite:false})
+  ));
+  // Planet light
+  const pl = new THREE.PointLight(d.c, .75, d.r*9);
+  m.add(pl);
+  scene.add(m);
+  return {mesh:m, rs:(Math.random()-.5)*.005+.001};
+});
+// Rings on 3 planets
+[2,4,8].forEach(i => {
+  const r = new THREE.Mesh(
+    new THREE.TorusGeometry(PDATA[i].r*1.85, PDATA[i].r*.13, 4, 60),
+    new THREE.MeshBasicMaterial({color:PDATA[i].c,transparent:true,opacity:.32,blending:THREE.AdditiveBlending,depthWrite:false})
+  );
+  r.rotation.x = Math.PI/3;
+  planets[i].mesh.add(r);
+});
+
+// ── Asteroid belts
+function mkAsteroids(cx,cy,cz,n) {
+  const g = new THREE.BufferGeometry();
+  const p = new Float32Array(n*3);
+  for (let i=0;i<n;i++) {
+    const rad = 28+Math.random()*22;
+    const a = Math.random()*Math.PI*2;
+    p[i*3]=cx+Math.cos(a)*rad; p[i*3+1]=cy+(Math.random()-.5)*6; p[i*3+2]=cz+Math.sin(a)*rad;
+  }
+  g.setAttribute('position',new THREE.BufferAttribute(p,3));
+  scene.add(new THREE.Points(g, new THREE.PointsMaterial({size:1.4,color:0x888899,transparent:true,opacity:.7})));
+}
+mkAsteroids(...PDATA[3].p, 180);
+mkAsteroids(...PDATA[7].p, 140);
+
+// ── UFO builder
+function mkUFO(scale, col) {
+  const g = new THREE.Group();
+  // Disc
+  g.add(Object.assign(new THREE.Mesh(
+    new THREE.CylinderGeometry(3.5*scale, 4.2*scale, .75*scale, isMobile?20:32),
+    new THREE.MeshPhongMaterial({color:0x374151, emissive:0x111827, shininess:120, specular:0x777777})
+  )));
+  // Dome
+  const dome = new THREE.Mesh(
+    new THREE.SphereGeometry(2.2*scale,isMobile?16:24,12,0,Math.PI*2,0,Math.PI*.55),
+    new THREE.MeshPhongMaterial({color:col,emissive:new THREE.Color(col).multiplyScalar(.35),transparent:true,opacity:.78,shininess:200})
+  );
+  dome.position.y = .38*scale;
+  g.add(dome);
+  // Rim lights
+  const rimC = [0x00d4ff,0xc4b5fd,0xf9a8d4,0x34d399,0xfbbf24,0x00d4ff,0xc4b5fd,0xf9a8d4];
+  for (let i=0;i<8;i++) {
+    const a=(i/8)*Math.PI*2;
+    const l = new THREE.Mesh(
+      new THREE.SphereGeometry(.22*scale,6,6),
+      new THREE.MeshBasicMaterial({color:rimC[i],blending:THREE.AdditiveBlending})
+    );
+    l.position.set(Math.cos(a)*3.3*scale, 0, Math.sin(a)*3.3*scale);
+    g.add(l);
+  }
+  // Underbelly glow
+  const nb = new THREE.Mesh(
+    new THREE.SphereGeometry(.65*scale,8,8),
+    new THREE.MeshBasicMaterial({color:col,blending:THREE.AdditiveBlending})
+  );
+  nb.position.y = -.5*scale;
+  g.add(nb);
+  const ul = new THREE.PointLight(col,1.1,25*scale);
+  ul.position.y = -1.5*scale;
+  g.add(ul);
+  return g;
+}
+
+// 5 UFOs with distinct behaviors
+const UFO_DEFS = [
+  {scale:1,   col:0x00d4ff, type:'orbit', oc:PDATA[0].p, or:48, os:.38},
+  {scale:1.4, col:0xc4b5fd, type:'orbit', oc:PDATA[4].p, or:62, os:-.22},
+  {scale:.85, col:0x34d399, type:'wander', hp:[ 45,12,-340]},
+  {scale:1.2, col:0xfbbf24, type:'path',   pts:[[65,-18,-600],[-60,28,-760],[85,18,-920],[-40,-22,-1060]]},
+  {scale:.75, col:0xf9a8d4, type:'wander', hp:[-35,22,-1220]},
+];
+const ufos = UFO_DEFS.map(d => {
+  const mesh = mkUFO(d.scale, d.col);
+  if (d.hp) mesh.position.set(...d.hp);
+  else if (d.oc) mesh.position.set(d.oc[0]+d.or, d.oc[1], d.oc[2]);
+  scene.add(mesh);
+  return {mesh, d, ang:Math.random()*Math.PI*2, wt:new THREE.Vector3(...(d.hp||[0,0,0])), wtimer:0};
+});
+
+// ── Journey path (CatmullRom through waypoint region)
+const PATH = new THREE.CatmullRomCurve3([
+  new THREE.Vector3(0, 0, 80),
+  new THREE.Vector3(0, 0,  0),
+  new THREE.Vector3(-12,  7,-200),
+  new THREE.Vector3( 18, -8,-390),
+  new THREE.Vector3(-14, 11,-575),
+  new THREE.Vector3( 16,-10,-755),
+  new THREE.Vector3(-18,  9,-940),
+  new THREE.Vector3( 12, -7,-1120),
+  new THREE.Vector3(-16, 10,-1300),
+  new THREE.Vector3(  0,  0,-1500),
+], false, 'catmullrom', .5);
+
+// t-values where ship pauses (one per section)
+const WP_T = [0, .12, .24, .35, .46, .57, .67, .77, .87];
+
+// ── DOM refs
+const jbar    = document.getElementById('jbar');
+const navSt   = document.getElementById('nav-st');
+const panel   = document.getElementById('panel');
+const plabel  = document.getElementById('plabel');
+const ptitle  = document.getElementById('ptitle');
+const ptext   = document.getElementById('ptext');
+const pcont   = document.getElementById('pcont');
+const shud    = document.getElementById('shud');
+const hudData = document.getElementById('hud-data');
+const dotsEl  = document.getElementById('dots');
+
+// Build dots
+SECTIONS.forEach((_,i)=>{
+  const d=document.createElement('div'); d.className='wd'; d.id='wd'+i;
+  d.title=SECTIONS[i].title;
+  dotsEl.appendChild(d);
+});
+
+// ── Text display
+let twTimer=null, revTimers=[];
+function clearPanel(){
+  clearTimeout(twTimer); revTimers.forEach(clearTimeout); revTimers=[];
+  panel.classList.remove('show'); pcont.classList.remove('show');
+  ptitle.textContent=''; ptext.innerHTML='';
+}
+function typewrite(el, text, speed, cb){
+  let i=0; el.textContent='';
+  (function tick(){
+    el.textContent+=text[i++];
+    if(i<text.length) twTimer=setTimeout(tick,speed); else cb&&cb();
+  })();
+}
+function showSection(idx){
+  clearPanel();
+  const s=SECTIONS[idx];
+  plabel.textContent=s.label;
+  document.querySelectorAll('.wd').forEach((d,i)=>{
+    d.classList.toggle('active',i===idx); d.classList.toggle('done',i<idx);
+  });
+  shud.textContent=s.label;
+  navSt.textContent=s.label.toUpperCase();
+  setTimeout(()=>{
+    panel.classList.add('show');
+    typewrite(ptitle, s.title, 32, ()=>{
+      (s.paras||[]).forEach((p,i)=>{
+        const el=document.createElement('p'); el.textContent=p; ptext.appendChild(el);
+        revTimers.push(setTimeout(()=>{
+          el.classList.add('show');
+          if(i===s.paras.length-1)
+            revTimers.push(setTimeout(()=>pcont.classList.add('show'),1400));
+        },350+i*650));
+      });
+    });
+  },180);
+}
+function hidePanel(){ panel.classList.remove('show'); pcont.classList.remove('show'); }
+
+// ── Journey state machine
+const J = {
+  t:0, nextWP:1, state:'wait',
+  paused:false, skip:false,
+  pauseStart:0,
+  getPauseDur(idx){ return (10000+((SECTIONS[idx].paras||[]).length)*3200); },
+  baseSpeed:.00018,
+};
+
+// ── Smooth camera targets
+const camPos = new THREE.Vector3();
+const camLook = new THREE.Vector3();
+let journeyStarted = false;
+
+function startJourney(){
+  journeyStarted=true;
+  document.getElementById('intro').classList.add('hidden');
+  camPos.copy(PATH.getPoint(0));
+  camLook.copy(PATH.getPoint(.008));
+  camera.position.copy(camPos);
+  camera.lookAt(camLook);
+  J.state='paused'; J.pauseStart=Date.now(); J.nextWP=1;
+  showSection(0);
+}
+
+document.getElementById('launch-btn').addEventListener('click', startJourney);
+document.getElementById('replay-btn').addEventListener('click', ()=>{
+  document.getElementById('done').classList.remove('show');
+  J.t=0; J.nextWP=1; J.state='paused'; J.skip=false; J.paused=false;
+  btnPause.textContent='⏸ PAUSE';
+  journeyStarted=true;
+  camPos.copy(PATH.getPoint(0));
+  camLook.copy(PATH.getPoint(.008));
+  showSection(0); J.pauseStart=Date.now();
+});
+
+const btnPause = document.getElementById('btn-pause');
+btnPause.addEventListener('click', ()=>{
+  J.paused=!J.paused;
+  btnPause.textContent=J.paused?'▶ RESUME':'⏸ PAUSE';
+  if(!J.paused && J.state==='paused') J.pauseStart=Date.now()-J.getPauseDur(J.nextWP-1)+3000;
+});
+document.getElementById('btn-skip').addEventListener('click', ()=>{ if(J.state==='paused') J.skip=true; });
+
+let spdMult=2;
+document.getElementById('spd').addEventListener('input',function(){ spdMult=+this.value; });
+
+// ── Clock
+const clock = new THREE.Clock();
+
+// ── Render loop
+function animate(){
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), .05);
+  const et = clock.getElapsedTime();
+
+  // Stars skybox follows camera
+  starField.position.copy(camera.position);
+
+  // Rotate planets
+  planets.forEach(p=>{ p.mesh.rotation.y+=p.rs; });
+
+  // UFO update
+  ufos.forEach((u,i)=>{
+    const {d,mesh} = u;
+    if(d.type==='orbit'){
+      u.ang+=d.os*dt;
+      const [cx,cy,cz]=d.oc;
+      mesh.position.set(cx+Math.cos(u.ang)*d.or, cy+Math.sin(u.ang*.4)*8, cz+Math.sin(u.ang)*d.or);
+      mesh.rotation.y=-u.ang+Math.PI/2;
+    }
+    if(d.type==='wander'){
+      u.wtimer-=dt;
+      if(u.wtimer<=0){
+        const h=new THREE.Vector3(...d.hp);
+        u.wt.set(h.x+(Math.random()-.5)*70, h.y+(Math.random()-.5)*22, h.z+(Math.random()-.5)*70);
+        u.wtimer=3.5+Math.random()*4;
+      }
+      mesh.position.lerp(u.wt, dt*.5);
+      mesh.rotation.y+=dt*.7;
+    }
+    if(d.type==='path'){
+      u.ang+=dt*.13;
+      const pts=d.pts, idx=Math.floor(u.ang)%pts.length, nxt=(idx+1)%pts.length, f=u.ang%1;
+      mesh.position.lerpVectors(new THREE.Vector3(...pts[idx]), new THREE.Vector3(...pts[nxt]), f);
+      mesh.rotation.y=et*.8;
+    }
+    // Gentle roll
+    mesh.rotation.z=Math.sin(et*1.4+i)*.06;
+  });
+
+  // ── Journey
+  if(journeyStarted && !J.paused){
+    if(J.state==='paused'){
+      const elapsed=Date.now()-J.pauseStart;
+      if(elapsed>=J.getPauseDur(J.nextWP-1) || J.skip){
+        J.skip=false;
+        hidePanel();
+        if(J.nextWP>=SECTIONS.length){ J.state='done'; document.getElementById('done').classList.add('show'); navSt.textContent='JOURNEY COMPLETE'; }
+        else J.state='traveling';
+      }
+    }
+    if(J.state==='traveling'){
+      const tgt=WP_T[J.nextWP]||.97;
+      const dist=tgt-J.t;
+      if(dist<=.003){
+        J.t=tgt;
+        J.state='paused'; J.pauseStart=Date.now();
+        showSection(J.nextWP); J.nextWP++;
+      } else {
+        let spd=J.baseSpeed*spdMult;
+        if(dist<.05) spd*=Math.max(.12,dist/.05);
+        J.t=Math.min(.98,J.t+Math.max(spd,.00004));
+      }
+    }
+  }
+
+  // Camera
+  if(journeyStarted){
+    const tt=Math.min(.9999,J.t);
+    const pt    =PATH.getPoint(tt);
+    const ptFwd =PATH.getPoint(Math.min(.9999,tt+.006));
+    camPos.lerp(pt, dt*4.5);
+    camLook.lerp(ptFwd, dt*4.5);
+    camera.position.copy(camPos);
+    camera.lookAt(camLook);
+    // Subtle roll sway
+    camera.rotation.z=Math.sin(et*.25)*.018;
+  }
+
+  // HUD
+  jbar.style.width=(J.t*100)+'%';
+  if(journeyStarted){
+    const spd=(J.state==='traveling'?J.baseSpeed*spdMult*100:.0).toFixed(2);
+    const brg=Math.round(((J.t*360)%360));
+    hudData.textContent=`VEL: ${spd} | BRG: ${String(brg).padStart(3,'0')}° | ${SECTIONS[Math.min(J.nextWP-1,SECTIONS.length-1)].label}`;
+  }
+
+  renderer.render(scene, camera);
+}
+
+animate();
+</script>
+</body>
+</html>
