@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Alien Shooter — Duck Hunt in Space</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #000;
+    font-family: 'Orbitron', 'Courier New', monospace;
+    overflow: hidden;
+    user-select: none;
+    cursor: none;
+  }
+  canvas { display: block; }
+  #hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    height: 52px;
+    background: linear-gradient(180deg, rgba(0,0,0,.92) 0%, rgba(0,0,20,.7) 100%);
+    border-bottom: 1px solid rgba(0,210,255,.25);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    z-index: 10;
+    backdrop-filter: blur(6px);
+  }
+  #hud-logo {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #00d4ff;
+    text-shadow: 0 0 12px #00d4ff88;
+  }
+  #hud-center {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+  }
+  .hud-stat {
+    font-size: 13px;
+    color: #94a3b8;
+    letter-spacing: 1px;
+  }
+  .hud-stat span {
+    color: #e2e8f0;
+    font-weight: 700;
+    font-size: 16px;
+  }
+  #hud-lives {
+    font-size: 20px;
+    letter-spacing: 4px;
+    color: #f87171;
+  }
+  #fact-banner {
+    position: fixed;
+    bottom: -90px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: min(700px, 94vw);
+    background: linear-gradient(135deg, rgba(0,10,30,.95), rgba(0,20,50,.95));
+    border: 1px solid rgba(0,210,255,.4);
+    border-radius: 14px;
+    padding: 14px 20px;
+    z-index: 20;
+    transition: bottom .4s cubic-bezier(.23,1,.32,1);
+    box-shadow: 0 0 30px rgba(0,210,255,.15), 0 4px 24px rgba(0,0,0,.6);
+  }
+  #fact-banner.show { bottom: 20px; }
+  #fact-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: #00d4ff;
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  #fact-text {
+    font-size: 14px;
+    color: #e2e8f0;
+    line-height: 1.55;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-weight: 400;
+  }
+  #overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 30;
+    background: radial-gradient(ellipse at center, rgba(0,0,30,.92) 0%, rgba(0,0,0,.97) 100%);
+  }
+  #overlay.hidden { display: none; }
+  .overlay-icon { font-size: 72px; animation: bob 1.4s ease-in-out infinite; margin-bottom: 16px; }
+  @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
+  .overlay-title {
+    font-size: clamp(26px, 5vw, 44px);
+    font-weight: 900;
+    color: #00d4ff;
+    text-shadow: 0 0 30px #00d4ffaa;
+    letter-spacing: 4px;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+  .overlay-sub {
+    font-size: 14px;
+    color: #64748b;
+    letter-spacing: 2px;
+    margin-bottom: 40px;
+    text-align: center;
+    max-width: 440px;
+    line-height: 1.7;
+    font-family: system-ui, sans-serif;
+    font-weight: 400;
+    color: #94a3b8;
+  }
+  .btn {
+    padding: 14px 48px;
+    background: linear-gradient(135deg, #0ea5e9, #7c3aed);
+    border: none;
+    border-radius: 40px;
+    font-family: 'Orbitron', monospace;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: #fff;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+    box-shadow: 0 0 30px rgba(14,165,233,.4);
+  }
+  .btn:hover { transform: scale(1.06); box-shadow: 0 0 50px rgba(14,165,233,.6); }
+  #final-score {
+    font-size: 54px;
+    font-weight: 900;
+    color: #fbbf24;
+    text-shadow: 0 0 30px #fbbf24aa;
+    margin: 10px 0 4px;
+  }
+  #final-label { font-size: 11px; color: #64748b; letter-spacing: 3px; margin-bottom: 36px; }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<!-- HUD -->
+<div id="hud">
+  <div id="hud-logo">👾 ALIEN HUNT</div>
+  <div id="hud-center">
+    <div class="hud-stat">LEVEL <span id="hud-level">1</span></div>
+    <div class="hud-stat">SCORE <span id="hud-score">0</span></div>
+    <div class="hud-stat">KILLS <span id="hud-kills">0</span></div>
+  </div>
+  <div id="hud-lives">❤❤❤</div>
+</div>
+
+<!-- Fun Fact Banner -->
+<div id="fact-banner">
+  <div id="fact-label">FUN FACT</div>
+  <div id="fact-text"></div>
+</div>
+
+<!-- Canvas -->
+<canvas id="c"></canvas>
+
+<!-- Start / Game Over overlay -->
+<div id="overlay">
+  <div id="ov-icon" class="overlay-icon">👾</div>
+  <div id="ov-title" class="overlay-title">ALIEN HUNT</div>
+  <div id="ov-sub" class="overlay-sub">
+    Aliens have invaded! Click to shoot them before they escape.<br>
+    Each kill reveals a cosmic fun fact.
+  </div>
+  <div id="final-score" style="display:none"></div>
+  <div id="final-label" style="display:none">FINAL SCORE</div>
+  <button class="btn" id="start-btn" onclick="startGame()">LAUNCH GAME</button>
+</div>
+
+<script>
+'use strict';
+
+// ─── Canvas setup ──────────────────────────────────────────────────────────
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', () => { resize(); if (!G.running) drawStars(); });
+
+// ─── Fun facts ─────────────────────────────────────────────────────────────
+const FACTS = [
+  'The "Wow! Signal" in 1977 lasted exactly 72 seconds — and has never been heard again.',
+  'There are ~40 billion Earth-sized planets in the Milky Way\'s habitable zones alone.',
+  'Europa (Jupiter\'s moon) holds more liquid water than all of Earth\'s oceans combined.',
+  'Scientists have found amino acids — life\'s building blocks — inside meteorites from space.',
+  'The Milky Way contains an estimated 200–400 billion stars. Most likely have planets.',
+  'The Drake Equation estimates thousands of intelligent civilizations may exist right now.',
+  'Tardigrades can survive in open space. They\'re basically tiny alien life forms already.',
+  'Mars once had liquid water on its surface for over a billion years.',
+  'Enceladus (Saturn\'s moon) shoots water geysers 500 km into space from a subsurface ocean.',
+  'The Fermi Paradox: if aliens exist everywhere, why haven\'t we heard from them yet?',
+  'TRAPPIST-1 has 7 Earth-sized planets — 3 in the habitable zone, just 39 light-years away.',
+  'In 2017, \'Oumuamua passed through our solar system tumbling at a strange angle — its origin is unknown.',
+  'NASA\'s Perseverance rover is actively searching for ancient microbial life on Mars right now.',
+  'The observable universe has more stars than grains of sand on all of Earth\'s beaches.',
+  'Phosphine gas — a potential biosignature — was detected in Venus\'s atmosphere in 2020.',
+  'Some scientists think life may float in the clouds of Venus, where temperatures are milder.',
+  'The SETI Institute has been listening for alien signals since 1984 without a confirmed reply.',
+  'A single bacterium ejected from Earth could theoretically seed life on another world (panspermia).',
+  'The "Great Filter" theory suggests most civilizations destroy themselves before we can detect them.',
+  'In 2021 the US government officially confirmed UFO sightings by military pilots are real and unexplained.',
+];
+
+// ─── Alien definitions ─────────────────────────────────────────────────────
+const ALIEN_TYPES = [
+  { name: 'Zorgon',    points: 100, draw: drawZorgon,    w: 48, h: 56 },
+  { name: 'Blorbax',   points: 150, draw: drawBlorbax,   w: 52, h: 60 },
+  { name: 'MechX-9',   points: 200, draw: drawMechX,     w: 46, h: 58 },
+  { name: 'Wiggloid',  points: 120, draw: drawWiggloid,  w: 44, h: 52 },
+];
+
+// ─── Palette helpers ────────────────────────────────────────────────────────
+const PALETTES = [
+  ['#86efac','#4ade80','#166534'], // Zorgon – green
+  ['#fdba74','#f97316','#7c2d12'], // Blorbax – orange
+  ['#93c5fd','#60a5fa','#1e3a5f'], // MechX   – blue
+  ['#c4b5fd','#a78bfa','#4c1d95'], // Wiggloid – purple
+];
+
+// ─── Alien draw functions ───────────────────────────────────────────────────
+function drawZorgon(ctx, x, y, s, flash) {
+  const c = flash ? '#ffffff' : PALETTES[0][0];
+  // Body
+  ctx.fillStyle = c;
+  ctx.beginPath();
+  ctx.ellipse(x, y+4*s, 16*s, 20*s, 0, 0, Math.PI*2);
+  ctx.fill();
+  // Head
+  ctx.beginPath();
+  ctx.ellipse(x, y-12*s, 14*s, 16*s, 0, 0, Math.PI*2);
+  ctx.fill();
+  // Eyes
+  ctx.fillStyle = '#0f172a';
+  ctx.beginPath(); ctx.ellipse(x-6*s, y-13*s, 4.5*s, 6*s, -.3, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(x+6*s, y-13*s, 4.5*s, 6*s, .3, 0, Math.PI*2); ctx.fill();
+  // Pupils
+  ctx.fillStyle = '#7dd3fc';
+  ctx.beginPath(); ctx.arc(x-6*s, y-13*s, 1.8*s, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+6*s, y-13*s, 1.8*s, 0, Math.PI*2); ctx.fill();
+  // Antennae
+  ctx.strokeStyle = PALETTES[0][1]; ctx.lineWidth = 1.5*s;
+  ctx.beginPath(); ctx.moveTo(x-7*s, y-26*s); ctx.lineTo(x-4*s, y-19*s); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x+7*s, y-26*s); ctx.lineTo(x+4*s, y-19*s); ctx.stroke();
+  ctx.fillStyle = '#fef08a';
+  ctx.beginPath(); ctx.arc(x-7*s, y-27*s, 2.5*s, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+7*s, y-27*s, 2.5*s, 0, Math.PI*2); ctx.fill();
+  // Mouth
+  ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 1.2*s;
+  ctx.beginPath(); ctx.arc(x, y-8*s, 5*s, 0.1, Math.PI-.1); ctx.stroke();
+  // Arms
+  ctx.strokeStyle = c; ctx.lineWidth = 3*s;
+  ctx.beginPath(); ctx.moveTo(x-16*s, y+4*s); ctx.lineTo(x-24*s, y-2*s); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x+16*s, y+4*s); ctx.lineTo(x+24*s, y-2*s); ctx.stroke();
+  // Legs
+  ctx.beginPath(); ctx.moveTo(x-8*s, y+22*s); ctx.lineTo(x-12*s, y+30*s); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x+8*s, y+22*s); ctx.lineTo(x+12*s, y+30*s); ctx.stroke();
+}
+
+function drawBlorbax(ctx, x, y, s, flash) {
+  const c = flash ? '#ffffff' : PALETTES[1][0];
+  // Tentacles
+  ctx.strokeStyle = flash ? '#ffffff' : PALETTES[1][1]; ctx.lineWidth = 3*s;
+  const angles = [-60,-36,-12,12,36,60];
+  angles.forEach((a, i) => {
+    const rad = a * Math.PI/180;
+    const waveTick = (Date.now() * .003 + i) % (Math.PI * 2);
+    const ex = x + Math.sin(rad)*22*s + Math.sin(waveTick)*4*s;
+    const ey = y + Math.abs(Math.cos(rad))*10*s + 22*s;
+    ctx.beginPath();
+    ctx.moveTo(x + Math.sin(rad)*10*s, y+12*s);
+    ctx.quadraticCurveTo(x + Math.sin(rad)*18*s, y+16*s, ex, ey);
+    ctx.stroke();
+  });
+  // Body
+  ctx.fillStyle = c;
+  ctx.beginPath(); ctx.arc(x, y, 18*s, 0, Math.PI*2); ctx.fill();
+  // Eyes ring
+  const eyeOff = [-10,-3,4];
+  eyeOff.forEach(ox => {
+    ctx.fillStyle = '#0f172a';
+    ctx.beginPath(); ctx.arc(x+ox*s, y-2*s, 4.5*s, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#f0abfc';
+    ctx.beginPath(); ctx.arc(x+ox*s, y-2*s, 1.8*s, 0, Math.PI*2); ctx.fill();
+  });
+  // Smile
+  ctx.strokeStyle = '#0f172a'; ctx.lineWidth = 1.5*s;
+  ctx.beginPath(); ctx.arc(x, y+6*s, 7*s, 0.1, Math.PI-.1); ctx.stroke();
+}
+
+function drawMechX(ctx, x, y, s, flash) {
+  const c = flash ? '#ffffff' : '#334155';
+  const acc = flash ? '#ffffff' : PALETTES[2][0];
+  // Legs
+  ctx.fillStyle = '#1e293b';
+  roundRect(ctx, x-10*s, y+18*s, 8*s, 14*s, 2*s); ctx.fill();
+  roundRect(ctx, x+2*s,  y+18*s, 8*s, 14*s, 2*s); ctx.fill();
+  // Body
+  ctx.fillStyle = c;
+  roundRect(ctx, x-18*s, y, 36*s, 28*s, 4*s); ctx.fill();
+  ctx.strokeStyle = acc; ctx.lineWidth = 1*s;
+  roundRect(ctx, x-18*s, y, 36*s, 28*s, 4*s); ctx.stroke();
+  // Chest light
+  const blink = Math.sin(Date.now() * .006) > 0;
+  ctx.fillStyle = blink ? '#f87171' : '#450a0a';
+  ctx.beginPath(); ctx.arc(x, y+16*s, 4*s, 0, Math.PI*2); ctx.fill();
+  // Head
+  ctx.fillStyle = c;
+  roundRect(ctx, x-14*s, y-26*s, 28*s, 26*s, 3*s); ctx.fill();
+  ctx.strokeStyle = acc; ctx.lineWidth = 1*s;
+  roundRect(ctx, x-14*s, y-26*s, 28*s, 26*s, 3*s); ctx.stroke();
+  // Eyes (LED squares)
+  ctx.fillStyle = acc;
+  roundRect(ctx, x-11*s, y-22*s, 9*s, 9*s, 1.5*s); ctx.fill();
+  roundRect(ctx, x+2*s,  y-22*s, 9*s, 9*s, 1.5*s); ctx.fill();
+  ctx.fillStyle = '#0f172a';
+  ctx.beginPath(); ctx.arc(x-6.5*s, y-17.5*s, 2*s, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+6.5*s, y-17.5*s, 2*s, 0, Math.PI*2); ctx.fill();
+  // Antenna
+  ctx.strokeStyle = acc; ctx.lineWidth = 1.5*s;
+  ctx.beginPath(); ctx.moveTo(x, y-26*s); ctx.lineTo(x, y-34*s); ctx.stroke();
+  ctx.fillStyle = acc; ctx.beginPath(); ctx.arc(x, y-35*s, 2.5*s, 0, Math.PI*2); ctx.fill();
+  // Arms
+  ctx.fillStyle = '#1e293b';
+  roundRect(ctx, x-26*s, y+2*s, 8*s, 18*s, 3*s); ctx.fill();
+  roundRect(ctx, x+18*s, y+2*s, 8*s, 18*s, 3*s); ctx.fill();
+}
+
+function drawWiggloid(ctx, x, y, s, flash) {
+  const c = flash ? '#ffffff' : PALETTES[3][0];
+  // Eye stalks
+  ctx.strokeStyle = flash ? '#fff' : PALETTES[3][1]; ctx.lineWidth = 2.5*s;
+  ctx.beginPath(); ctx.moveTo(x-8*s, y-14*s); ctx.lineTo(x-10*s, y-26*s); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x+8*s, y-14*s); ctx.lineTo(x+10*s, y-26*s); ctx.stroke();
+  ctx.fillStyle = '#fef9c3';
+  ctx.beginPath(); ctx.arc(x-10*s, y-27*s, 4.5*s, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+10*s, y-27*s, 4.5*s, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#0f172a';
+  ctx.beginPath(); ctx.arc(x-10*s, y-27*s, 2*s, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+10*s, y-27*s, 2*s, 0, Math.PI*2); ctx.fill();
+  // Body
+  ctx.fillStyle = c;
+  ctx.beginPath(); ctx.arc(x, y, 18*s, 0, Math.PI*2); ctx.fill();
+  // Mouth
+  ctx.fillStyle = '#0f172a';
+  ctx.beginPath(); ctx.arc(x, y+6*s, 6*s, 0, Math.PI); ctx.fill();
+  ctx.fillStyle = '#fca5a5';
+  ctx.beginPath(); ctx.arc(x, y+6*s, 4*s, 0, Math.PI); ctx.fill();
+  // Tiny arms
+  ctx.strokeStyle = c; ctx.lineWidth = 3*s;
+  ctx.beginPath(); ctx.moveTo(x-18*s, y); ctx.lineTo(x-26*s, y-6*s); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x+18*s, y); ctx.lineTo(x+26*s, y-6*s); ctx.stroke();
+  ctx.fillStyle = c;
+  ctx.beginPath(); ctx.arc(x-26*s, y-6*s, 4*s, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x+26*s, y-6*s, 4*s, 0, Math.PI*2); ctx.fill();
+}
+
+// ─── roundRect helper ───────────────────────────────────────────────────────
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r, y);
+  ctx.lineTo(x+w-r, y); ctx.arcTo(x+w, y, x+w, y+r, r);
+  ctx.lineTo(x+w, y+h-r); ctx.arcTo(x+w, y+h, x+w-r, y+h, r);
+  ctx.lineTo(x+r, y+h); ctx.arcTo(x, y+h, x, y+h-r, r);
+  ctx.lineTo(x, y+r); ctx.arcTo(x, y, x+r, y, r);
+  ctx.closePath();
+}
+
+// ─── Stars background ────────────────────────────────────────────────────────
+let stars = [];
+function initStars() {
+  stars = Array.from({length: 260}, () => ({
+    x: Math.random() * W, y: Math.random() * H,
+    r: Math.random() * 1.6 + 0.2,
+    alpha: Math.random() * .6 + .3,
+    twinkle: Math.random() * .04 + .01,
+    phase: Math.random() * Math.PI * 2,
+    col: ['#ffffff','#c7d2fe','#a5f3fc','#ddd6fe'][Math.random()*4|0],
+  }));
+}
+
+function drawStars() {
+  ctx.fillStyle = '#000008';
+  ctx.fillRect(0, 0, W, H);
+  const t = Date.now() * .001;
+  stars.forEach(s => {
+    const a = s.alpha * (.7 + .3 * Math.sin(s.phase + t * s.twinkle * 60));
+    ctx.globalAlpha = a;
+    ctx.fillStyle = s.col;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI*2);
+    ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+}
+
+// ─── Nebula gradient ─────────────────────────────────────────────────────────
+function drawNebula() {
+  const grad = ctx.createRadialGradient(W*.7, H*.3, 10, W*.7, H*.3, W*.4);
+  grad.addColorStop(0, 'rgba(99,20,120,.08)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, W, H);
+  const grad2 = ctx.createRadialGradient(W*.2, H*.7, 10, W*.2, H*.7, W*.35);
+  grad2.addColorStop(0, 'rgba(14,60,100,.1)');
+  grad2.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = grad2;
+  ctx.fillRect(0, 0, W, H);
+}
+
+// ─── Particle ────────────────────────────────────────────────────────────────
+class Particle {
+  constructor(x, y, type) {
+    const pal = PALETTES[type];
+    this.x = x; this.y = y;
+    this.vx = (Math.random()-.5)*7;
+    this.vy = (Math.random()-0.8)*7;
+    this.r  = Math.random()*5+2;
+    this.col = pal[Math.random()*pal.length|0];
+    this.life = 1;
+    this.decay = Math.random()*.04+.025;
+    this.gravity = .12;
+  }
+  update() {
+    this.x += this.vx;
+    this.y += this.vy;
+    this.vy += this.gravity;
+    this.vx *= .97;
+    this.life -= this.decay;
+    this.r *= .97;
+  }
+  draw() {
+    ctx.globalAlpha = Math.max(0, this.life);
+    ctx.fillStyle = this.col;
+    ctx.shadowColor = this.col;
+    ctx.shadowBlur = 6;
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI*2); ctx.fill();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ─── Score popup ─────────────────────────────────────────────────────────────
+class ScorePopup {
+  constructor(x, y, text, col='#fbbf24') {
+    this.x = x; this.y = y; this.text = text; this.col = col;
+    this.life = 1; this.vy = -1.4;
+  }
+  update() { this.y += this.vy; this.life -= .025; }
+  draw() {
+    ctx.globalAlpha = Math.max(0, this.life);
+    ctx.fillStyle = this.col;
+    ctx.font = `bold ${Math.round(22*(1+(1-this.life)*.3))}px Orbitron, monospace`;
+    ctx.textAlign = 'center';
+    ctx.shadowColor = this.col;
+    ctx.shadowBlur = 10;
+    ctx.fillText(this.text, this.x, this.y);
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ─── Click effect ─────────────────────────────────────────────────────────────
+class ClickEffect {
+  constructor(x, y, hit) {
+    this.x = x; this.y = y; this.hit = hit;
+    this.r = 8; this.life = 1;
+  }
+  update() { this.r += 3; this.life -= .07; }
+  draw() {
+    ctx.globalAlpha = Math.max(0, this.life);
+    ctx.strokeStyle = this.hit ? '#00d4ff' : '#f87171';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(this.x, this.y, this.r, 0, Math.PI*2); ctx.stroke();
+    if (!this.hit) {
+      ctx.strokeStyle = '#f87171';
+      ctx.lineWidth = 2;
+      const s = this.r*.5;
+      ctx.beginPath();
+      ctx.moveTo(this.x-s, this.y-s); ctx.lineTo(this.x+s, this.y+s);
+      ctx.moveTo(this.x+s, this.y-s); ctx.lineTo(this.x-s, this.y+s);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+}
+
+// ─── Alien class ─────────────────────────────────────────────────────────────
+class Alien {
+  constructor(level) {
+    this.type  = Math.random()*ALIEN_TYPES.length|0;
+    this.def   = ALIEN_TYPES[this.type];
+    this.scale = .9 + Math.random()*.4;
+    const hw   = (this.def.w * this.scale) / 2 + 10;
+
+    // Start from left or right
+    this.dir   = Math.random() < .5 ? 1 : -1;
+    this.x     = this.dir === 1 ? -hw : W + hw;
+    this.y     = 80 + Math.random() * (H - 160);
+
+    const spd  = (1.5 + Math.random() * 1.5 + level * .2) * this.dir;
+    this.vx    = spd;
+    this.vy    = 0;
+
+    // Movement pattern
+    this.pattern  = ['straight','wavy','zigzag'][Math.random()*3|0];
+    this.phase    = Math.random() * Math.PI * 2;
+    this.waveAmp  = 30 + Math.random()*40;
+    this.waveFreq = .015 + Math.random()*.02;
+    this.zigTimer = 0;
+    this.baseY    = this.y;
+
+    this.flash     = false;
+    this.flashTimer = 0;
+    this.dead      = false;
+    this.escaped   = false;
+
+    // Hitbox half-dimensions
+    this.hw = (this.def.w * this.scale) / 2 + 4;
+    this.hh = (this.def.h * this.scale) / 2 + 4;
+  }
+
+  update() {
+    if (this.dead || this.escaped) return;
+    this.x += this.vx;
+
+    if (this.pattern === 'wavy') {
+      this.phase += this.waveFreq;
+      this.y = this.baseY + Math.sin(this.phase) * this.waveAmp;
+    } else if (this.pattern === 'zigzag') {
+      this.zigTimer++;
+      if (this.zigTimer % 60 === 0) this.vy *= -1;
+      if (this.vy === 0) this.vy = (Math.random()<.5?1:-1)*2;
+      this.y += this.vy;
+    }
+    this.y = Math.max(60, Math.min(H - 40, this.y));
+
+    if (this.flashTimer > 0) {
+      this.flashTimer--;
+      this.flash = this.flashTimer > 0;
+    }
+
+    // Escaped if fully off opposite side
+    if (this.dir === 1 && this.x > W + this.hw + 20) this.escaped = true;
+    if (this.dir === -1 && this.x < -this.hw - 20)   this.escaped = true;
+  }
+
+  draw() {
+    if (this.dead || this.escaped) return;
+    ctx.save();
+    if (this.dir === -1) {
+      ctx.translate(this.x*2, 0);
+      ctx.scale(-1, 1);
+    }
+    this.def.draw(ctx, this.x, this.y, this.scale, this.flash);
+    ctx.restore();
+  }
+
+  isHit(mx, my) {
+    return Math.abs(mx - this.x) < this.hw && Math.abs(my - this.y) < this.hh;
+  }
+
+  explode() {
+    this.dead = true;
+    const count = 18 + Math.random()*14|0;
+    for (let i = 0; i < count; i++) {
+      G.particles.push(new Particle(this.x, this.y, this.type));
+    }
+    G.popups.push(new ScorePopup(this.x, this.y - 30, '+' + this.def.points));
+  }
+}
+
+// ─── Game state ───────────────────────────────────────────────────────────────
+const G = {
+  score: 0, lives: 3, level: 1, kills: 0,
+  aliens: [], particles: [], popups: [], effects: [],
+  spawnTimer: 0, running: false, over: false,
+  mx: W/2, my: H/2,
+  usedFacts: new Set(),
+};
+
+function startGame() {
+  G.score = 0; G.lives = 3; G.level = 1; G.kills = 0;
+  G.aliens = []; G.particles = []; G.popups = []; G.effects = [];
+  G.spawnTimer = 0; G.running = true; G.over = false;
+  G.usedFacts = new Set();
+  hideFact();
+  updateHUD();
+
+  document.getElementById('overlay').classList.add('hidden');
+  document.getElementById('final-score').style.display = 'none';
+  document.getElementById('final-label').style.display = 'none';
+
+  initStars();
+  loop();
+}
+
+function gameOver() {
+  G.running = false; G.over = true;
+  const ov = document.getElementById('overlay');
+  ov.classList.remove('hidden');
+  document.getElementById('ov-icon').textContent = '💀';
+  document.getElementById('ov-title').textContent = 'GAME OVER';
+  document.getElementById('ov-sub').textContent = 'The aliens have escaped! Better luck next time, space cadet.';
+  document.getElementById('final-score').style.display = '';
+  document.getElementById('final-score').textContent = G.score.toLocaleString();
+  document.getElementById('final-label').style.display = '';
+  document.getElementById('start-btn').textContent = 'PLAY AGAIN';
+}
+
+function updateHUD() {
+  document.getElementById('hud-level').textContent = G.level;
+  document.getElementById('hud-score').textContent = G.score.toLocaleString();
+  document.getElementById('hud-kills').textContent = G.kills;
+  document.getElementById('hud-lives').textContent = '❤'.repeat(G.lives) + '🖤'.repeat(Math.max(0, 3-G.lives));
+}
+
+function getSpawnRate() { return Math.max(40, 90 - G.level * 8); }
+function getMaxAliens() { return Math.min(5, 1 + Math.floor(G.level / 2)); }
+
+// ─── Fun fact display ─────────────────────────────────────────────────────────
+let factTimer = null;
+function showFact(alienName) {
+  let available = FACTS.map((_,i)=>i).filter(i=>!G.usedFacts.has(i));
+  if (available.length === 0) { G.usedFacts.clear(); available = FACTS.map((_,i)=>i); }
+  const idx = available[Math.random()*available.length|0];
+  G.usedFacts.add(idx);
+
+  document.getElementById('fact-label').textContent = `🛸 ${alienName} ELIMINATED — FUN FACT`;
+  document.getElementById('fact-text').textContent = FACTS[idx];
+  document.getElementById('fact-banner').classList.add('show');
+
+  clearTimeout(factTimer);
+  factTimer = setTimeout(hideFact, 5000);
+}
+
+function hideFact() {
+  document.getElementById('fact-banner').classList.remove('show');
+}
+
+// ─── Mouse tracking ───────────────────────────────────────────────────────────
+canvas.addEventListener('mousemove', e => {
+  G.mx = e.clientX; G.my = e.clientY;
+});
+
+canvas.addEventListener('click', e => {
+  if (!G.running) return;
+  const mx = e.clientX, my = e.clientY;
+  G.effects.push(new ClickEffect(mx, my, false));
+
+  let hit = false;
+  for (let i = G.aliens.length - 1; i >= 0; i--) {
+    const a = G.aliens[i];
+    if (!a.dead && !a.escaped && a.isHit(mx, my)) {
+      G.effects[G.effects.length-1] = new ClickEffect(mx, my, true);
+      a.explode();
+      G.score += a.def.points;
+      G.kills++;
+      showFact(a.def.name);
+      if (G.kills % 5 === 0) {
+        G.level++;
+        G.popups.push(new ScorePopup(W/2, H/2, `LEVEL ${G.level}!`, '#00d4ff'));
+      }
+      updateHUD();
+      hit = true;
+      break;
+    }
+  }
+});
+
+// Touch support
+canvas.addEventListener('touchend', e => {
+  e.preventDefault();
+  const t = e.changedTouches[0];
+  canvas.dispatchEvent(new MouseEvent('click', {clientX:t.clientX, clientY:t.clientY}));
+});
+
+// ─── Custom crosshair ─────────────────────────────────────────────────────────
+function drawCrosshair(x, y) {
+  const s = 16;
+  ctx.strokeStyle = 'rgba(0,212,255,.9)';
+  ctx.lineWidth = 1.5;
+  ctx.shadowColor = '#00d4ff';
+  ctx.shadowBlur = 8;
+  // Cross
+  ctx.beginPath();
+  ctx.moveTo(x-s, y); ctx.lineTo(x-5, y);
+  ctx.moveTo(x+5, y); ctx.lineTo(x+s, y);
+  ctx.moveTo(x, y-s); ctx.lineTo(x, y-5);
+  ctx.moveTo(x, y+5); ctx.lineTo(x, y+s);
+  ctx.stroke();
+  // Circle
+  ctx.beginPath(); ctx.arc(x, y, 5, 0, Math.PI*2); ctx.stroke();
+  ctx.shadowBlur = 0;
+}
+
+// ─── Ground strip ─────────────────────────────────────────────────────────────
+function drawGround() {
+  const grad = ctx.createLinearGradient(0, H-40, 0, H);
+  grad.addColorStop(0, 'rgba(0,30,10,.7)');
+  grad.addColorStop(1, 'rgba(0,50,20,.9)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, H-40, W, 40);
+  // Glow line
+  ctx.strokeStyle = 'rgba(74,222,128,.3)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0, H-40); ctx.lineTo(W, H-40); ctx.stroke();
+}
+
+// ─── Main loop ────────────────────────────────────────────────────────────────
+function loop() {
+  if (!G.running) return;
+
+  drawStars();
+  drawNebula();
+  drawGround();
+
+  // Spawn
+  G.spawnTimer++;
+  if (G.spawnTimer >= getSpawnRate() && G.aliens.filter(a=>!a.dead&&!a.escaped).length < getMaxAliens()) {
+    G.aliens.push(new Alien(G.level));
+    G.spawnTimer = 0;
+  }
+
+  // Update & draw aliens
+  G.aliens.forEach(a => a.update());
+  G.aliens.forEach(a => a.draw());
+
+  // Check escapes
+  G.aliens.forEach(a => {
+    if (a.escaped && !a._counted) {
+      a._counted = true;
+      G.lives--;
+      G.popups.push(new ScorePopup(W/2, 120, 'ALIEN ESCAPED!', '#f87171'));
+      updateHUD();
+      if (G.lives <= 0) gameOver();
+    }
+  });
+  // Remove dead or escaped aliens
+  G.aliens = G.aliens.filter(a => !a.dead && !a.escaped);
+
+  // Particles
+  G.particles.forEach(p => { p.update(); p.draw(); });
+  G.particles = G.particles.filter(p => p.life > 0);
+
+  // Score popups
+  G.popups.forEach(p => { p.update(); p.draw(); });
+  G.popups = G.popups.filter(p => p.life > 0);
+
+  // Click effects
+  G.effects.forEach(e => { e.update(); e.draw(); });
+  G.effects = G.effects.filter(e => e.life > 0);
+
+  // Crosshair
+  drawCrosshair(G.mx, G.my);
+
+  requestAnimationFrame(loop);
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+initStars();
+(function bgLoop() {
+  if (!G.running) {
+    drawStars();
+    drawNebula();
+  }
+  if (!G.running) requestAnimationFrame(bgLoop);
+})();
+
+</script>
+</body>
+</html>
